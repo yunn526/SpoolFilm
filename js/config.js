@@ -8,5 +8,5 @@ window.SPOOL_CONFIG = {
     appId: '1:940493287504:web:e744be672843e71ea62155'
   },
   // 選填：Google Drive 雲端同步用的「網頁應用程式」OAuth 用戶端 ID（同一個 Google Cloud 專案）。留空則隱藏雲端同步。
-  GOOGLE_CLIENT_ID: ''
+  GOOGLE_CLIENT_ID: '230306416675-khh8tajhg0kb8h63ahvbsqsbgprj1hga.apps.googleusercontent.com'
 };
