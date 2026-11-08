@@ -405,3 +405,11 @@ input, select, .input { background:var(--paper); color:var(--ink); border-color:
 .auth-loading { text-align: center; margin-top: 22px; }
 .danger-card { margin-top: 14px; }
 .danger-btn { color: var(--danger); }
+.login h1 {
+    font-family: "Noto Serif TC", serif;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+}
+.login-description p + p {
+    margin-top: 16px;
+}
