@@ -1,5 +1,5 @@
-/* Cache v3.0. Keep API and Google requests network-only. */
-const CACHE = 'spoolfilm-v3.0';
+/* Cache v3.3. Keep API and Google requests network-only. */
+const CACHE = 'spoolfilm-v3.3';
 const ASSETS = ['./', 'index.html', 'admin.html', 'privacy.html', 'terms.html', 'css/style.css', 'js/config.js', 'js/theme.js', 'js/auth.js', 'js/camera.js', 'js/admin.js', 'manifest.json', 'icons/icon-192.png', 'icons/icon-512.png'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));
