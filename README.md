@@ -81,3 +81,32 @@ Firestore → 新增集合 `admins` → 文件 ID 填你的 **Email（小寫）*
 4. 安裝完成後，管理員每次儲存回報回覆，系統會建立 `mail` 文件，擴充功能會依設定寄送到使用者登入 Email。
 
 若未安裝／未正確設定 Trigger Email，應用程式內通知仍會正常建立，但不會寄出 Email。請先以測試帳號確認寄送與垃圾郵件匣，再正式使用。
+
+
+## 2026-11-13：通知、公告與回報管理更新
+
+本版新增／調整：
+- 問題回覆通知帶有 `feedbackId`；使用者標記該通知已讀後，會將同一筆 `feedback/{feedbackId}.userRead` 設為 `true`，管理後台據此鎖定回覆與處理狀態。
+- 管理員可勾選多筆回報並批次刪除。刪除權限由 Firestore Rules 的 `isAdmin()` 驗證，不以隱藏前端按鈕作為安全措施。
+- 公告支援指定 Email 或全體使用者，類型包含一般通知、功能更新、重大更新、系統維護、重要服務異動。
+- 通知中心未讀數由 Firestore 通知文件即時計算（每次登入、頁面切換、通知載入及標記已讀後重新讀取）；不是靜態裝飾數字。
+- 原本四個「我的」分類與相機／相簿功能保留。
+
+### Firebase 部署步驟（必做）
+
+1. 開啟 Firebase Console → Firestore Database → Rules。
+2. 將本 ZIP 的 `firebase/firestore.rules` 全文部署到 Firestore Rules，按 **Publish**。
+3. 確認 `admins/{管理員Email小寫}` 文件已存在。管理員文件只能由專案擁有者在 Firebase Console／受信任管理環境建立；前端不可自行授予管理員。
+4. 確認 Authentication 已啟用 Google 登入，並將正式網站網域加入 Authorized domains。
+5. 不需要新增 Cloud Functions 或新的 Firebase 專案設定；本版使用既有 Firestore 與 Authentication。若使用 Email 寄送，仍需另外安裝並設定 Firebase Trigger Email Extension。
+6. 建議先用測試帳號驗證：一般使用者讀寫自己的通知、無權讀取他人通知；非管理員無法刪除回報或發送公告；管理員可執行公告與批次刪除。
+
+### 通知資料欄位
+
+- 問題回覆通知：`kind: "reply"`、`feedbackId`。
+- 公告：`kind: "announcement"`、`noticeType`（`general` / `feature` / `major` / `maintenance` / `service`）、`audience`（`specific` / `all`）。
+- 使用者讀取問題回覆通知後，對應回報會寫入 `userRead: true`、`userReadAt`；管理員介面以該回報文件 ID 對應，不以 Email 推斷已讀狀態。
+
+### 測試限制
+
+本次在交付環境可執行 JavaScript 語法檢查與程式碼／規則靜態檢查；無法登入你的 Firebase 專案、部署 Rules 或以真實 Google 帳號進行端到端測試。因此，Rules 必須由專案管理員部署後，依上述測試清單實測。全體公告會逐位使用者建立通知；大量帳號時發送時間會隨人數增加。

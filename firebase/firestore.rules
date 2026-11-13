@@ -67,17 +67,25 @@ service cloud.firestore {
         && request.resource.data.message is string
         && request.resource.data.message.size() > 0 && request.resource.data.message.size() <= 1500;
       allow get, list: if isAdmin() || (accountActive() && resource.data.email == mail());
-      allow update: if isAdmin()
-        && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['status', 'adminReply', 'repliedAt', 'repliedBy']);
-      allow delete: if isAdmin() || (accountActive() && resource.data.email == mail());
+      allow update: if (isAdmin()
+          && resource.data.get('userRead', false) != true
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'adminReply', 'repliedAt', 'repliedBy', 'replyNotificationId']))
+        || (accountActive() && resource.data.email == mail()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['userRead', 'userReadAt'])
+          && request.resource.data.userRead == true
+          && resource.data.get('replyNotificationId', '') != ''
+          && get(/databases/$(database)/documents/notifications/$(resource.data.replyNotificationId)).data.email == mail()
+          && get(/databases/$(database)/documents/notifications/$(resource.data.replyNotificationId)).data.read == true);
+      allow delete: if isAdmin() || (accountActive() && resource.data.email == mail() && !('adminReply' in resource.data));
     }
 
     match /notifications/{id} {
       allow create: if isAdmin();
       allow get, list: if isAdmin() || (accountActive() && resource.data.email == mail());
       allow update: if accountActive() && resource.data.email == mail()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'readAt']);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'readAt'])
+        && request.resource.data.read == true;
       allow delete: if isAdmin();
     }
 

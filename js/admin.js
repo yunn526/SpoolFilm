@@ -25,15 +25,26 @@
       }); body.appendChild(tr);
     });
   }
+  var selectedFeedback = new Set();
+  function updateFeedbackSelection(total) {
+    $('feedbackSelectedCount').textContent='已選取 '+selectedFeedback.size+' 筆';
+    $('deleteSelectedFeedback').disabled=selectedFeedback.size===0;
+    $('feedbackSelectAll').checked=total>0 && selectedFeedback.size===total;
+    $('feedbackSelectAll').indeterminate=selectedFeedback.size>0 && selectedFeedback.size<total;
+  }
   function renderFeedback(items) {
     var wrap=$('feedback'); wrap.textContent='';
-    if(!items.length){var empty=document.createElement('div');empty.className='admin-empty';empty.textContent='目前沒有問題回報';wrap.appendChild(empty);return;}
+    selectedFeedback.clear();
+    $('feedbackSelectAll').checked=false;
+    if(!items.length){var empty=document.createElement('div');empty.className='admin-empty';empty.textContent='目前沒有問題回報';wrap.appendChild(empty);updateFeedbackSelection(0);return;}
     items.forEach(function(f){
       var card=document.createElement('article');card.className='feedback-item';
       var head=document.createElement('div');head.className='feedback-head';
+      var pick=document.createElement('input');pick.type='checkbox';pick.className='feedback-pick';pick.setAttribute('aria-label','選取此筆回報');
+      pick.addEventListener('change',function(){if(pick.checked)selectedFeedback.add(f.id);else selectedFeedback.delete(f.id);updateFeedbackSelection(items.length);});
       var title=document.createElement('strong');title.textContent=(f.category||'其他')+' · '+(f.email||'未知帳號');
       var status=document.createElement('span');status.className='admin-status';status.textContent=({pending:'待處理',in_progress:'處理中',resolved:'已解決'}[f.status]||'待處理');
-      head.append(title,status);
+      head.append(pick,title,status);
       var meta=document.createElement('div');meta.className='admin-muted';meta.textContent=fmt(f.time);
       var message=document.createElement('p');message.className='feedback-message';message.textContent=f.message||'';
       var actions=document.createElement('div');actions.className='feedback-actions';
@@ -42,16 +53,23 @@
       [['pending','待處理'],['in_progress','處理中'],['resolved','已解決']].forEach(function(o){var op=document.createElement('option');op.value=o[0];op.textContent=o[1];statusSel.appendChild(op);});
       statusSel.value=f.status||'pending';
       var send=document.createElement('button');send.className='admin-btn primary';send.type='button';send.textContent='儲存並通知';
-      send.addEventListener('click',async function(){
-        if(!reply.value.trim()){alert('請先輸入回覆內容。');return;}
-        send.disabled=true;send.textContent='傳送中…';
-        var result=await SpoolAuth.api('adminReplyFeedback',{id:f.id,reply:reply.value.trim(),status:statusSel.value});
-        send.disabled=false;send.textContent='儲存並通知';
-        if(result.ok){alert('回覆已儲存，應用程式內通知已建立。若已設定郵件擴充功能，也會寄出 Email。');load();}
-        else alert('儲存失敗：'+result.error);
-      });
-      actions.append(reply,statusSel,send);card.append(head,meta,message,actions);wrap.appendChild(card);
+      if(f.userRead){
+        reply.disabled=true;statusSel.disabled=true;send.disabled=true;
+        var lock=document.createElement('span');lock.className='feedback-read-lock';lock.textContent='使用者已讀・已鎖定';actions.append(lock);
+      } else {
+        send.addEventListener('click',async function(){
+          if(!reply.value.trim()){alert('請先輸入回覆內容。');return;}
+          send.disabled=true;send.textContent='傳送中…';
+          var result=await SpoolAuth.api('adminReplyFeedback',{id:f.id,reply:reply.value.trim(),status:statusSel.value});
+          send.disabled=false;send.textContent='儲存並通知';
+          if(result.ok){alert('回覆已儲存，應用程式內通知已建立。');load();}
+          else alert(result.error==='already_read'?'使用者已讀取，這筆回報已鎖定。':'儲存失敗：'+result.error);
+        });
+        actions.append(reply,statusSel,send);
+      }
+      card.append(head,meta,message,actions);wrap.appendChild(card);
     });
+    updateFeedbackSelection(items.length);
   }
   function renderEvents(items) {
     var body=$('events');body.textContent='';
@@ -94,9 +112,20 @@
     });
     $('noticeForm').addEventListener('submit',async function(e){
       e.preventDefault();setMsg('noticeMsg','發送中…');
-      var d=await SpoolAuth.api('adminSendNotice',{targetEmail:$('noticeEmail').value.trim(),title:$('noticeTitle').value.trim(),message:$('noticeMessage').value.trim()});
-      setMsg('noticeMsg',d.ok?'通知已送達通知中心。':'發送失敗：'+d.error);
+      var d=await SpoolAuth.api('adminSendNotice',{audience:$('noticeAudience').value,targetEmail:$('noticeEmail').value.trim(),noticeType:$('noticeType').value,title:$('noticeTitle').value.trim(),message:$('noticeMessage').value.trim()});
+      setMsg('noticeMsg',d.ok?'公告已送出，共 '+d.sent+' 位使用者。':'發送失敗：'+d.error);
       if(d.ok){$('noticeTitle').value='';$('noticeMessage').value='';}
+    });
+    $('noticeAudience').addEventListener('change',function(){var all=$('noticeAudience').value==='all';$('noticeEmail').disabled=all;$('noticeEmail').required=!all;});
+    $('feedbackSelectAll').addEventListener('change',function(){var boxes=document.querySelectorAll('.feedback-pick');boxes.forEach(function(b){b.checked=$('feedbackSelectAll').checked;b.dispatchEvent(new Event('change'));});});
+    $('deleteSelectedFeedback').addEventListener('click',async function(){
+      var ids=Array.from(selectedFeedback);if(!ids.length)return;
+      if(!confirm('確定刪除選取的 '+ids.length+' 筆問題回報？此動作無法復原。'))return;
+      var btn=$('deleteSelectedFeedback');btn.disabled=true;btn.textContent='刪除中…';
+      var d=await SpoolAuth.api('adminDeleteFeedback',{ids:ids});
+      btn.textContent='刪除選取項目';
+      if(d.ok){alert('已刪除 '+d.deleted+' 筆回報。');load();}
+      else{alert('刪除失敗：'+d.error);btn.disabled=false;}
     });
     SpoolAuth.onChange(onAuthChange);onAuthChange(null);SpoolAuth.start($('authMount'));
   });

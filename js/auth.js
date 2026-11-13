@@ -129,15 +129,29 @@
         return { ok: true };
       }
       if (action === 'notifications') {
-        var nq = await fs.getDocs(fs.query(fs.collection(db, 'notifications'), fs.where('email', '==', email), fs.limit(30)));
-        var notices = []; nq.forEach(function (s) { var n = s.data(); notices.push({ id: s.id, title: n.title || 'SpoolFilm 通知', message: n.message || '', time: n.time || '', read: !!n.read }); }); notices.sort(function(a,b){return String(b.time).localeCompare(String(a.time));});
-        return { ok: true, notifications: notices };
+        var nq = await fs.getDocs(fs.query(fs.collection(db, 'notifications'), fs.where('email', '==', email)));
+        var notices = []; nq.forEach(function (s) { var n = s.data(); notices.push({ id: s.id, title: n.title || 'SpoolFilm 通知', message: n.message || '', time: n.time || '', read: !!n.read, kind: n.kind || 'reply', feedbackId: n.feedbackId || '', noticeType: n.noticeType || '' }); }); notices.sort(function(a,b){return String(b.time).localeCompare(String(a.time));});
+        return { ok: true, notifications: notices, unreadCount: notices.filter(function(n){return !n.read;}).length };
       }
       if (action === 'markNotificationRead') {
         var nid = String(payload.id || '');
         if (!/^[A-Za-z0-9_-]{1,150}$/.test(nid)) return { ok: false, error: 'bad_request' };
-        await fs.updateDoc(fs.doc(db, 'notifications', nid), { read: true, readAt: nowIso() });
+        var nref = fs.doc(db, 'notifications', nid), nsnap = await fs.getDoc(nref);
+        if (!nsnap.exists() || nsnap.data().email !== email) return { ok: false, error: 'not_found' };
+        await fs.updateDoc(nref, { read: true, readAt: nowIso() });
+        var nd = nsnap.data();
+        if (nd.feedbackId) {
+          var fr = fs.doc(db, 'feedback', nd.feedbackId), fss = await fs.getDoc(fr);
+          if (fss.exists() && fss.data().email === email) await fs.updateDoc(fr, { userRead: true, userReadAt: nowIso() });
+        }
         return { ok: true };
+      }
+      if (action === 'adminDeleteFeedback') {
+        if (!state.user.isAdmin) return { ok: false, error: 'forbidden' };
+        var ids = Array.isArray(payload.ids) ? payload.ids.slice(0, 100) : [];
+        if (!ids.length || ids.some(function(id){return !/^[A-Za-z0-9_-]{1,150}$/.test(String(id));})) return { ok: false, error: 'bad_request' };
+        for (var di = 0; di < ids.length; di++) await fs.deleteDoc(fs.doc(db, 'feedback', String(ids[di])));
+        return { ok: true, deleted: ids.length };
       }
       if (action === 'adminSetAccountStatus') {
         if (!state.user.isAdmin) return { ok: false, error: 'forbidden' };
@@ -156,11 +170,24 @@
         if (!state.user.isAdmin) return { ok: false, error: 'forbidden' };
         var noticeEmail = String(payload.targetEmail || '').toLowerCase().trim();
         var noticeTitle = String(payload.title || '').trim(), noticeMessage = String(payload.message || '').trim();
-        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(noticeEmail) || !noticeTitle || noticeTitle.length > 80 || !noticeMessage || noticeMessage.length > 1200) return { ok: false, error: 'bad_request' };
-        var noticeUser = await fs.getDoc(userRef(noticeEmail));
-        if (!noticeUser.exists()) return { ok: false, error: 'not_found' };
-        await fs.addDoc(fs.collection(db, 'notifications'), { email: noticeEmail, title: noticeTitle, message: noticeMessage, time: nowIso(), read: false });
-        return { ok: true };
+        var noticeType = String(payload.noticeType || 'general');
+        var audience = String(payload.audience || 'specific');
+        var allowedTypes = ['general','feature','major','maintenance','service'];
+        if (!noticeTitle || noticeTitle.length > 80 || !noticeMessage || noticeMessage.length > 3000 || !allowedTypes.includes(noticeType) || !['specific','all'].includes(audience)) return { ok: false, error: 'bad_request' };
+        var recipients = [];
+        if (audience === 'all') {
+          var allUsers = await fs.getDocs(fs.collection(db, 'users'));
+          allUsers.forEach(function(s){ recipients.push(s.id.toLowerCase()); });
+        } else {
+          if (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(noticeEmail)) return { ok: false, error: 'bad_request' };
+          var noticeUser = await fs.getDoc(userRef(noticeEmail));
+          if (!noticeUser.exists()) return { ok: false, error: 'not_found' };
+          recipients.push(noticeEmail);
+        }
+        for (var ri=0; ri<recipients.length; ri++) {
+          await fs.addDoc(fs.collection(db, 'notifications'), { email: recipients[ri], title: noticeTitle, message: noticeMessage, time: nowIso(), read: false, kind: 'announcement', noticeType: noticeType, audience: audience });
+        }
+        return { ok: true, sent: recipients.length };
       }
       if (action === 'adminReplyFeedback') {
         if (!state.user.isAdmin) return { ok: false, error: 'forbidden' };
@@ -170,8 +197,9 @@
         var feedbackRef = fs.doc(db, 'feedback', feedbackId), feedbackSnap = await fs.getDoc(feedbackRef);
         if (!feedbackSnap.exists()) return { ok: false, error: 'not_found' };
         var fbData = feedbackSnap.data();
-        await fs.updateDoc(feedbackRef, { status: feedbackStatus, adminReply: reply, repliedAt: nowIso(), repliedBy: email });
-        await fs.addDoc(fs.collection(db, 'notifications'), { email: fbData.email, title: '問題回報有新回覆', message: reply, time: nowIso(), read: false, feedbackId: feedbackId });
+        if (fbData.userRead === true) return { ok: false, error: 'already_read' };
+        var replyNotice = await fs.addDoc(fs.collection(db, 'notifications'), { email: fbData.email, title: '問題回報有新回覆', message: reply, time: nowIso(), read: false, feedbackId: feedbackId, kind: 'reply' });
+        await fs.updateDoc(feedbackRef, { status: feedbackStatus, adminReply: reply, repliedAt: nowIso(), repliedBy: email, replyNotificationId: replyNotice.id });
         // 若已安裝 Firebase Trigger Email 擴充功能，mail 集合會自動寄出 Email。
         await fs.addDoc(fs.collection(db, 'mail'), { to: fbData.email, message: { subject: 'SpoolFilm 問題回報處理通知', text: '感謝你回報 SpoolFilm 的問題／建議。\\n\\n管理員回覆：\\n' + reply + '\\n\\n你也可以登入 SpoolFilm，在「我的」查看應用程式內通知。' }, createdAt: nowIso() });
         return { ok: true };
@@ -192,7 +220,7 @@
         var ev = await fs.getDocs(fs.query(fs.collection(db, 'events'), fs.orderBy('time', 'desc'), fs.limit(100)));
         var recent = []; ev.forEach(function (s) { var r = s.data(); recent.push({ time: r.time, email: r.email, event: r.event, details: r.details }); });
         var fbq = await fs.getDocs(fs.query(fs.collection(db, 'feedback'), fs.orderBy('time', 'desc'), fs.limit(100)));
-        var feedback = []; fbq.forEach(function (s) { var r = s.data(); feedback.push({ id: s.id, time: r.time, email: r.email, category: r.category, message: r.message, page: r.page, status: r.status || 'pending', adminReply: r.adminReply || '' }); });
+        var feedback = []; fbq.forEach(function (s) { var r = s.data(); feedback.push({ id: s.id, time: r.time, email: r.email, category: r.category, message: r.message, page: r.page, status: r.status || 'pending', adminReply: r.adminReply || '', userRead: r.userRead === true }); });
         return { ok: true, totals: totals, users: users, recent: recent, feedback: feedback };
       }
       if (action === 'adminSetPlan') {

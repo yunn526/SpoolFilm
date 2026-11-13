@@ -716,6 +716,17 @@
     } finally { btn.disabled = false; }
   }
 
+  async function refreshUnreadBadge() {
+    var badge = $('unreadBadge');
+    if (!badge || !SpoolAuth.user) return;
+    var result = await SpoolAuth.api('notifications');
+    if (!result.ok) return;
+    var count = Number(result.unreadCount || 0);
+    badge.hidden = count < 1;
+    badge.textContent = count > 99 ? '99+' : String(count);
+    badge.classList.toggle('has-count', count > 0);
+  }
+
   async function loadNotifications() {
     var wrap = $('notificationList');
     if (!wrap || !SpoolAuth.user) return;
@@ -726,16 +737,19 @@
     if (!result.notifications.length) { wrap.textContent = '目前沒有新通知。'; return; }
     result.notifications.forEach(function(n) {
       var item = document.createElement('article'); item.className = 'notification-item' + (n.read ? '' : ' unread');
+      var kind = document.createElement('span'); kind.className = 'notice-kind ' + (n.kind === 'announcement' ? 'announcement ' + (n.noticeType || '') : 'reply');
+      var typeNames = {general:'一般通知',feature:'功能更新',major:'重大更新',maintenance:'系統維護',service:'重要服務異動'};
+      kind.textContent = n.kind === 'announcement' ? (typeNames[n.noticeType] || '公告') : '問題回覆';
       var title = document.createElement('strong'); title.textContent = n.title;
       var date = document.createElement('small'); date.textContent = n.time ? new Date(n.time).toLocaleString('zh-TW') : '';
       var msg = document.createElement('p'); msg.textContent = n.message;
-      item.append(title, date, msg);
+      item.append(kind, title, date, msg);
       if (!n.read) {
         var btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn ghost small'; btn.textContent = '標記為已讀';
         btn.addEventListener('click', async function() {
           btn.disabled = true;
           var r = await SpoolAuth.api('markNotificationRead', { id: n.id });
-          if (r.ok) { item.classList.remove('unread'); btn.remove(); } else { btn.disabled = false; toast('更新失敗，請稍後再試'); }
+          if (r.ok) { item.classList.remove('unread'); btn.remove(); refreshUnreadBadge(); } else { btn.disabled = false; toast('更新失敗，請稍後再試'); }
         });
         item.appendChild(btn);
       }
@@ -755,6 +769,7 @@
     });
     document.querySelectorAll('.navbtn').forEach(function (b) { b.classList.toggle('active', b.dataset.page === name); });
     if (name === 'camera') updateOverlays();
+    refreshUnreadBadge();
     if (name === 'account') showAccountTab('general');
   }
   function showAccountTab(name) {
@@ -791,6 +806,7 @@
       renderUser();
       loadSavedPhotos(user.email.toLowerCase());
       loadNotifications();
+      refreshUnreadBadge();
     } else {
       loadingOwner = '';
       stopCamera(); photos.forEach(function (p) { if (p.url) URL.revokeObjectURL(p.url); });

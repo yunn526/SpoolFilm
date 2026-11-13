@@ -76,11 +76,17 @@ body{background:var(--adm-bg)!important;color:var(--adm-text)!important}
           </form><p id="statusMsg" class="admin-muted" role="status"></p></div>
         </section>
         <section class="admin-view" data-panel="feedback">
-          <div class="admin-card"><h2>使用者問題回報</h2><p class="admin-muted">回覆會出現在使用者「我的」頁通知中心；若已安裝並設定 Firebase Trigger Email，也會寄送 Gmail／電子郵件。</p><div id="feedback" class="feedback-list"></div></div>
+          <div class="admin-card"><h2>使用者問題回報</h2><p class="admin-muted">回覆會出現在使用者「我的」頁通知中心；若已安裝並設定 Firebase Trigger Email，也會寄送 Gmail／電子郵件。</p><div class="feedback-bulkbar"><label><input type="checkbox" id="feedbackSelectAll"> 全選</label><span id="feedbackSelectedCount">已選取 0 筆</span><button id="deleteSelectedFeedback" class="admin-btn danger" type="button" disabled>刪除選取項目</button></div><div id="feedback" class="feedback-list"></div></div>
         </section>
         <section class="admin-view" data-panel="notices">
           <div class="admin-card"><h2>發送應用程式內通知</h2><p class="admin-muted">可通知指定使用者；重大更新可用此功能在使用者登入後顯示於「我的」通知中心。</p>
-            <form id="noticeForm" class="admin-form"><input id="noticeEmail" type="email" placeholder="收件者 Email" required><input id="noticeTitle" type="text" placeholder="通知標題" maxlength="80" required><textarea id="noticeMessage" placeholder="通知內容…" maxlength="1200" required></textarea><button class="admin-btn primary" type="submit">發送通知</button></form><p id="noticeMsg" class="admin-muted" role="status"></p>
+            <form id="noticeForm" class="admin-form">
+              <label for="noticeAudience">發送對象</label><select id="noticeAudience"><option value="specific">指定使用者</option><option value="all">全體使用者</option></select>
+              <input id="noticeEmail" type="email" placeholder="收件者 Email" required>
+              <label for="noticeType">公告類型</label><select id="noticeType"><option value="general">一般通知</option><option value="feature">功能更新</option><option value="major">重大更新</option><option value="maintenance">系統維護</option><option value="service">重要服務異動</option></select>
+              <input id="noticeTitle" type="text" placeholder="公告標題" maxlength="80" required>
+              <textarea id="noticeMessage" placeholder="公告內容…" maxlength="3000" required></textarea>
+              <button class="admin-btn primary" type="submit">發布公告</button></form><p id="noticeMsg" class="admin-muted" role="status"></p>
           </div>
         </section>
         <section class="admin-view" data-panel="events">

@@ -479,3 +479,24 @@ input, select, .input { background:var(--paper); color:var(--ink); border-color:
   .account-overview { padding:9px 10px; }
   .account-plan-tag { font-size:7px; }
 }
+
+
+/* SpoolFilm notification and feedback administration updates */
+.tab-dot[hidden] { display:none !important; }
+.tab-dot.has-count { width:auto; min-width:17px; height:17px; padding:0 5px; margin:0 0 0 5px; display:inline-flex; align-items:center; justify-content:center; vertical-align:middle; border-radius:999px; background:#b84b3f; color:#fff; font-size:10px; line-height:17px; font-weight:800; }
+.notice-kind { display:inline-flex; width:max-content; margin:0 0 6px; padding:3px 7px; border-radius:999px; background:var(--surface-2); color:var(--muted); font-size:10px; font-weight:800; }
+.notice-kind.major,.notice-kind.maintenance,.notice-kind.service { background:rgba(184,75,63,.16); color:#c66b5e; }
+.notification-item.announcement { border-left:3px solid var(--accent); }
+.notification-item.announcement .notice-kind { letter-spacing:.02em; }
+.feedback-bulkbar { display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin:12px 0; padding:10px 12px; border:1px solid var(--admin-line,var(--line)); border-radius:10px; }
+.feedback-bulkbar label { display:flex; align-items:center; gap:7px; }
+.feedback-pick { width:17px; height:17px; accent-color:var(--admin-accent,#9b7657); }
+.feedback-read-lock { display:inline-flex; align-items:center; padding:8px 10px; border-radius:8px; background:rgba(120,150,120,.14); color:#729274; font-size:12px; font-weight:800; }
+.feedback-head { gap:10px; }
+#noticeEmail:disabled { opacity:.45; }
+@media (max-width:560px) {
+  .account-tabs { gap:3px; padding:4px; }
+  .account-tab { padding:10px 2px; font-size:9px; }
+  .feedback-bulkbar { gap:8px; }
+  .feedback-bulkbar .admin-btn { width:100%; }
+}
