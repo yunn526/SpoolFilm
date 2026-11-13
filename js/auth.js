@@ -143,7 +143,7 @@
         if (!state.user.isAdmin) return { ok: false, error: 'forbidden' };
         var targetStatusEmail = String(payload.targetEmail || '').toLowerCase().trim();
         var accountStatus = String(payload.status || '');
-        if (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(targetStatusEmail) || !['active','suspended','terminated'].includes(accountStatus)) return { ok: false, error: 'bad_request' };
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(targetStatusEmail) || !['active','suspended','terminated'].includes(accountStatus)) return { ok: false, error: 'bad_request' };
         var statusRef = userRef(targetStatusEmail), statusSnap = await fs.getDoc(statusRef);
         if (!statusSnap.exists()) return { ok: false, error: 'not_found' };
         await fs.updateDoc(statusRef, { accountStatus: accountStatus, statusUpdatedAt: nowIso(), statusUpdatedBy: email });
@@ -156,7 +156,7 @@
         if (!state.user.isAdmin) return { ok: false, error: 'forbidden' };
         var noticeEmail = String(payload.targetEmail || '').toLowerCase().trim();
         var noticeTitle = String(payload.title || '').trim(), noticeMessage = String(payload.message || '').trim();
-        if (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(noticeEmail) || !noticeTitle || noticeTitle.length > 80 || !noticeMessage || noticeMessage.length > 1200) return { ok: false, error: 'bad_request' };
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(noticeEmail) || !noticeTitle || noticeTitle.length > 80 || !noticeMessage || noticeMessage.length > 1200) return { ok: false, error: 'bad_request' };
         var noticeUser = await fs.getDoc(userRef(noticeEmail));
         if (!noticeUser.exists()) return { ok: false, error: 'not_found' };
         await fs.addDoc(fs.collection(db, 'notifications'), { email: noticeEmail, title: noticeTitle, message: noticeMessage, time: nowIso(), read: false });
