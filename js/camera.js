@@ -748,15 +748,37 @@
     if (d.ok) { SpoolAuth.user.plan = d.plan; renderUser(); }
   }
   function showPage(name) {
-    ['camera', 'gallery', 'account'].forEach(function (n) { $('page-' + n).classList.toggle('active', n === name); });
+    ['camera', 'gallery', 'account'].forEach(function (n) {
+      var page = $('page-' + n);
+      page.classList.toggle('active', n === name);
+      if (n === name) page.scrollTop = 0;
+    });
     document.querySelectorAll('.navbtn').forEach(function (b) { b.classList.toggle('active', b.dataset.page === name); });
     if (name === 'camera') updateOverlays();
+    if (name === 'account') showAccountTab('general');
+  }
+  function showAccountTab(name) {
+    document.querySelectorAll('[data-account-tab]').forEach(function (b) {
+      var active = b.dataset.accountTab === name;
+      b.classList.toggle('active', active);
+      b.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    document.querySelectorAll('[data-account-panel]').forEach(function (panel) {
+      var active = panel.dataset.accountPanel === name;
+      panel.classList.toggle('active', active);
+      panel.hidden = !active;
+      if (active) panel.scrollTop = 0;
+    });
+    if (name === 'notifications') loadNotifications();
   }
   function renderUser() {
     var u = SpoolAuth.user;
     $('planBadge').textContent = u ? u.plan : '';
     $('acctEmail').textContent = u ? u.email : '';
+    if ($('acctEmailShort')) $('acctEmailShort').textContent = u ? u.email : '我的帳號';
     $('acctPlan').textContent = u ? (u.plan === 'PRO' ? 'PRO 進階版：16 款濾鏡、12 台原創相機、原始解析度、無浮水印' : 'FREE 免費版：9 款濾鏡、6 台原創相機、最長邊 1280px、含浮水印') : '';
+    if ($('accountPlanTag')) $('accountPlanTag').textContent = u ? (u.plan === 'PRO' ? 'PRO MEMBER' : 'FREE MEMBER') : 'SPOOLFILM MEMBER';
+    if ($('planStateLabel')) $('planStateLabel').textContent = u ? ('目前使用：' + u.plan) : '目前方案';
     $('adminLink').style.display = u && u.isAdmin ? '' : 'none';
     buildModelButtons(); buildFilterButtons();
   }
@@ -821,6 +843,10 @@
     $('importFile').addEventListener('change', function (e) { var f = e.target.files && e.target.files[0]; e.target.value = ''; importPhoto(f); });
     window.addEventListener('resize', function () { updateOverlays(); });
     document.querySelectorAll('.navbtn').forEach(function (b) { b.addEventListener('click', function () { showPage(b.dataset.page); }); });
+    document.querySelectorAll('[data-account-tab]').forEach(function (b) {
+      b.addEventListener('click', function () { showAccountTab(b.dataset.accountTab); });
+    });
+    if ($('refreshNotifications')) $('refreshNotifications').addEventListener('click', function () { loadNotifications(); });
     document.querySelectorAll('[data-theme-choice]').forEach(function (b) { b.addEventListener('click', function () { SpoolTheme.set(b.dataset.themeChoice); }); });
     $('logout').addEventListener('click', function () { SpoolAuth.signOut(); });
     $('deleteAccount').addEventListener('click', async function () {

@@ -155,62 +155,82 @@
       <div id="galleryEmpty" class="empty"><span>♡</span><b>相簿還是空的</b><small>去拍一張，替今天留個紀念吧。</small></div>
     </section>
 
-    <section id="page-account" class="page">
-      <div class="page-intro"><div class="eyebrow">YOUR SPACE / 03</div><h1>我的小設定</h1><p>把相機調整成你喜歡的樣子。</p></div>
-      <div class="card account-card">
-        <div class="kv"><span>登入帳號</span><b id="acctEmail"></b></div>
-        <div class="kv"><span>目前方案</span><b id="acctPlan"></b></div>
+    <section id="page-account" class="page account-page">
+      <div class="page-intro account-intro">
+        <div><div class="eyebrow">YOUR SPACE / 03</div><h1>我的小設定</h1><p>把 SpoolFilm 調整成你喜歡的樣子。</p></div>
+        <div class="account-user-chip"><span class="account-avatar">♡</span><span id="acctEmailShort">我的帳號</span></div>
       </div>
-      <div class="card theme-card">
-        <div class="eyebrow">APPEARANCE</div><h2>畫面主題</h2>
-        <p class="note">可自行切換淺色、深色，或跟隨手機／電腦的系統外觀。</p>
-        <div class="theme-options" role="group" aria-label="畫面主題">
-          <button type="button" class="theme-choice" data-theme-choice="light" aria-pressed="false">☀️ 淺色</button>
-          <button type="button" class="theme-choice" data-theme-choice="dark" aria-pressed="false">🌙 深色</button>
-          <button type="button" class="theme-choice" data-theme-choice="system" aria-pressed="true">◐ 跟隨系統</button>
+      <div class="account-overview card">
+        <div class="account-overview-main">
+          <span class="account-avatar large">✦</span>
+          <div class="account-overview-copy"><strong id="acctEmail"></strong><span id="acctPlan"></span></div>
         </div>
+        <span class="account-plan-tag" id="accountPlanTag">SPOOLFILM MEMBER</span>
       </div>
-      <div class="card">
-        <div class="eyebrow">SPOOL PLUS</div><h2>升級 PRO</h2>
-        <p class="note">目前由管理員核發 PRO。核發後按下「重新取得方案」即可更新。</p>
-        <button id="refreshPlan" class="btn ghost" type="button">重新取得方案</button>
+      <div class="account-tabs" role="tablist" aria-label="帳號設定分類">
+        <button class="account-tab active" type="button" data-account-tab="general" role="tab" aria-selected="true">外觀與方案</button>
+        <button class="account-tab" type="button" data-account-tab="notifications" role="tab" aria-selected="false">通知中心 <span class="tab-dot" aria-hidden="true"></span></button>
+        <button class="account-tab" type="button" data-account-tab="feedback" role="tab" aria-selected="false">問題回報</button>
+        <button class="account-tab" type="button" data-account-tab="security" role="tab" aria-selected="false">帳號管理</button>
       </div>
-      <section class="card feedback-card" id="notificationCard">
-        <div class="eyebrow">NOTIFICATIONS</div>
-        <h2>應用程式通知</h2>
-        <p class="note">重要更新、帳號狀態與問題回報回覆會顯示在這裡。</p>
-        <div id="notificationList" class="notification-list"><p class="note">載入通知中…</p></div>
-      </section>
-      <section class="card feedback-card">
-        <div class="eyebrow">FEEDBACK</div>
-        <h2>問題回報</h2>
-        <p class="note">遇到相機、登入、照片或雲端同步問題嗎？告訴我們發生了什麼事，管理者會在後台查看。</p>
-        <form id="feedbackForm" class="feedback-form">
-          <label for="feedbackType">問題類型</label>
-          <select id="feedbackType" class="input" required>
-            <option value="雲端同步">雲端同步</option>
-            <option value="相機拍攝">相機拍攝</option>
-            <option value="登入">登入</option>
-            <option value="相簿／照片">相簿／照片</option>
-            <option value="介面問題">介面問題</option>
-            <option value="其他建議">其他建議</option>
-          </select>
-          <label for="feedbackMessage">問題描述</label>
-          <textarea id="feedbackMessage" class="input" rows="4" maxlength="1500" placeholder="請描述操作步驟、出現的訊息，以及使用的裝置／瀏覽器…" required></textarea>
-          <button id="feedbackSubmit" class="btn" type="submit">送出回報</button>
-        </form>
-        <p id="feedbackStatus" class="note" role="status" aria-live="polite"></p>
-      </section>
-      <a id="adminLink" class="btn admin-link" href="admin.html" style="display:none">前往管理員後台</a>
-      <button id="logout" class="btn ghost logout-btn" type="button">登出</button>
-      <section class="card danger-card">
-        <div class="eyebrow">ACCOUNT</div><h2>刪除帳號</h2>
-        <p class="note">會刪除你的帳號、方案與使用紀錄，無法復原。這個裝置上的照片與你 Google Drive 裡的照片不會被刪除。</p>
-        <button id="deleteAccount" class="btn ghost danger-btn" type="button">刪除我的帳號</button>
-        <p id="deleteMsg" class="note" role="status"></p>
-      </section>
-      <p class="privacy-note account-privacy">✦ 照片只儲存在你的裝置與你自行選擇的 Google Drive</p>
-      <p class="legal-links"><a href="privacy.html">隱私權政策</a> ・ <a href="terms.html">服務條款</a></p>
+      <div class="account-panels">
+        <section class="account-panel active" data-account-panel="general" role="tabpanel">
+          <div class="account-panel-heading"><div><span class="eyebrow">PERSONALIZE</span><h2>外觀與方案</h2></div><span class="panel-index">01 / 04</span></div>
+          <div class="card theme-card">
+            <div class="eyebrow">APPEARANCE</div><h2>畫面主題</h2>
+            <p class="note">選擇淺色、深色，或跟隨裝置的系統外觀。</p>
+            <div class="theme-options" role="group" aria-label="畫面主題">
+              <button type="button" class="theme-choice" data-theme-choice="light" aria-pressed="false">☀️ 淺色</button>
+              <button type="button" class="theme-choice" data-theme-choice="dark" aria-pressed="false">🌙 深色</button>
+              <button type="button" class="theme-choice" data-theme-choice="system" aria-pressed="true">◐ 跟隨系統</button>
+            </div>
+          </div>
+          <div class="card plan-card">
+            <div class="eyebrow">SPOOL PLUS</div><h2>你的使用方案</h2>
+            <p class="note">目前由管理員核發 PRO。方案更新後，可按下方按鈕重新取得。</p>
+            <div class="plan-actions"><span class="plan-state" id="planStateLabel">目前方案</span><button id="refreshPlan" class="btn ghost" type="button">重新取得方案</button></div>
+          </div>
+        </section>
+        <section class="account-panel" data-account-panel="notifications" role="tabpanel" hidden>
+          <div class="account-panel-heading"><div><span class="eyebrow">NOTIFICATIONS</span><h2>通知中心</h2><p class="note">重要更新、帳號狀態與問題回報回覆都會保留在這裡。</p></div><span class="panel-index">02 / 04</span></div>
+          <section class="card notification-card" id="notificationCard">
+            <div class="notification-panel-top"><div><h3>應用程式通知</h3><p class="note">查看來自 SpoolFilm 的最新消息。</p></div><button id="refreshNotifications" class="btn ghost small" type="button">重新整理</button></div>
+            <div id="notificationList" class="notification-list"><p class="note">載入通知中…</p></div>
+          </section>
+        </section>
+        <section class="account-panel" data-account-panel="feedback" role="tabpanel" hidden>
+          <div class="account-panel-heading"><div><span class="eyebrow">FEEDBACK</span><h2>問題回報</h2><p class="note">你的意見能幫助我們把 SpoolFilm 做得更好。</p></div><span class="panel-index">03 / 04</span></div>
+          <section class="card feedback-card">
+            <h3>告訴我們遇到什麼問題</h3>
+            <p class="note">請描述操作步驟、出現的訊息，以及使用的裝置／瀏覽器。管理者會在後台查看。</p>
+            <form id="feedbackForm" class="feedback-form">
+              <label for="feedbackType">問題類型</label>
+              <select id="feedbackType" class="input" required>
+                <option value="雲端同步">雲端同步</option><option value="相機拍攝">相機拍攝</option><option value="登入">登入</option><option value="相簿／照片">相簿／照片</option><option value="介面問題">介面問題</option><option value="其他建議">其他建議</option>
+              </select>
+              <label for="feedbackMessage">問題描述</label>
+              <textarea id="feedbackMessage" class="input" rows="5" maxlength="1500" placeholder="請告訴我們發生了什麼事…" required></textarea>
+              <button id="feedbackSubmit" class="btn" type="submit">送出回報</button>
+            </form>
+            <p id="feedbackStatus" class="note" role="status" aria-live="polite"></p>
+          </section>
+        </section>
+        <section class="account-panel" data-account-panel="security" role="tabpanel" hidden>
+          <div class="account-panel-heading"><div><span class="eyebrow">ACCOUNT</span><h2>帳號管理</h2><p class="note">管理登入狀態與個人資料。</p></div><span class="panel-index">04 / 04</span></div>
+          <div class="account-actions-card card">
+            <a id="adminLink" class="btn admin-link" href="admin.html" style="display:none">前往管理員後台</a>
+            <button id="logout" class="btn ghost logout-btn" type="button">登出 SpoolFilm</button>
+          </div>
+          <section class="card danger-card">
+            <div class="eyebrow">ACCOUNT DATA</div><h3>刪除帳號</h3>
+            <p class="note">會刪除你的帳號、方案與使用紀錄，無法復原。這個裝置上的照片與你 Google Drive 裡的照片不會被刪除。</p>
+            <button id="deleteAccount" class="btn ghost danger-btn" type="button">刪除我的帳號</button>
+            <p id="deleteMsg" class="note" role="status"></p>
+          </section>
+          <p class="privacy-note account-privacy">✦ 照片只儲存在你的裝置與你自行選擇的 Google Drive</p>
+          <p class="legal-links"><a href="privacy.html">隱私權政策</a> ・ <a href="terms.html">服務條款</a></p>
+        </section>
+      </div>
     </section>
   </main>
 

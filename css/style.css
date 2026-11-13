@@ -414,3 +414,68 @@ input, select, .input { background:var(--paper); color:var(--ink); border-color:
 .notification-item p{font-size:13px;white-space:pre-wrap;line-height:1.6;margin:5px 0}
 .notification-item small{color:var(--muted);font-size:11px}
 .notification-item button{margin-top:7px;font-size:11px;padding:6px 10px}
+
+
+/* 2026-11-13: app-like viewport and account sub-navigation */
+#app { height: calc(100dvh - 138px); min-height: 0; overflow: hidden; }
+#app > .page.active { height: 100%; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+#page-camera.active { display: flex; }
+.account-page.active { display: flex; flex-direction: column; gap: 12px; overflow: hidden !important; padding-top: 16px; padding-bottom: 12px; }
+.account-intro { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:0; }
+.account-intro h1 { margin:4px 0; font-size:23px; }
+.account-intro p { margin:0; }
+.account-user-chip { display:flex; align-items:center; gap:7px; max-width:45%; padding:7px 10px; border:1px solid var(--line); border-radius:999px; color:var(--muted); font-size:10px; }
+.account-user-chip span:last-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.account-avatar { display:grid; place-items:center; flex:0 0 28px; width:28px; height:28px; border-radius:50%; background:var(--soft); color:var(--accent); font-weight:900; }
+.account-avatar.large { width:42px; height:42px; flex-basis:42px; font-size:18px; }
+.account-overview { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0; padding:11px 14px; }
+.account-overview-main { display:flex; align-items:center; gap:10px; min-width:0; }
+.account-overview-copy { display:flex; flex-direction:column; gap:3px; min-width:0; }
+.account-overview-copy strong { overflow-wrap:anywhere; font-size:12px; }
+.account-overview-copy span { color:var(--muted); font-size:10px; line-height:1.45; }
+.account-plan-tag { flex:0 0 auto; padding:5px 8px; border:1px solid var(--line); border-radius:999px; color:var(--accent); font-size:8px; font-weight:900; letter-spacing:1px; }
+.account-tabs { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; padding:5px; border:1px solid var(--line); border-radius:14px; background:var(--surface-2); }
+.account-tab { min-width:0; padding:10px 4px; border-radius:10px; background:transparent; color:var(--muted); font-size:10px; font-weight:750; white-space:nowrap; }
+.account-tab.active { background:var(--paper); color:var(--accent); box-shadow:0 2px 8px rgba(0,0,0,.06); }
+.tab-dot { display:inline-block; width:5px; height:5px; margin:0 0 5px 2px; border-radius:50%; background:var(--accent); }
+.account-panels { flex:1; min-height:0; overflow:hidden; }
+.account-panel { display:none; height:100%; overflow-y:auto; overscroll-behavior:contain; padding:1px 2px 10px; scrollbar-width:thin; }
+.account-panel.active { display:block; }
+.account-panel-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin:3px 2px 10px; }
+.account-panel-heading h2 { margin:3px 0 0; font-size:17px; }
+.account-panel-heading p { margin:4px 0 0; }
+.panel-index { color:var(--muted); font-size:9px; letter-spacing:1px; padding-top:4px; }
+.account-panel .card { margin:0 0 10px; }
+.account-panel .card h2 { font-size:15px; }
+.account-panel .card h3 { margin:2px 0 6px; font-size:13px; }
+.plan-actions,.notification-panel-top { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.plan-state { color:var(--muted); font-size:10px; }
+.notification-card { min-height:120px; }
+.notification-panel-top { margin-bottom:10px; }
+.notification-panel-top h3,.notification-panel-top p { margin:0; }
+.notification-panel-top p { margin-top:3px; }
+.account-panel .feedback-form { display:grid; gap:8px; }
+.account-panel .feedback-form label { margin-top:4px; }
+.account-panel .feedback-form textarea { min-height:120px; resize:vertical; }
+.account-actions-card { display:grid; gap:8px; }
+.account-actions-card .btn { width:100%; }
+.account-panel .admin-link { display:block; text-align:center; }
+.account-panel .legal-links { margin:8px 2px; }
+.account-panel .account-privacy { margin:8px 2px; }
+.account-panel .danger-card { border-color:color-mix(in srgb,var(--danger) 35%,var(--line)); }
+@media (min-width:760px) {
+  .shell { width:min(100%,760px); }
+  .bottomnav { width:min(760px,100%); }
+  .account-page.active { padding-left:28px; padding-right:28px; }
+  .account-panel .card { padding:18px; }
+}
+@media (max-width:420px) {
+  #app { height:calc(100dvh - 130px); }
+  .account-page.active { padding-left:13px; padding-right:13px; gap:9px; }
+  .account-intro h1 { font-size:20px; }
+  .account-user-chip { max-width:42%; padding:6px 8px; }
+  .account-tabs { gap:3px; padding:4px; }
+  .account-tab { font-size:9px; padding:9px 2px; }
+  .account-overview { padding:9px 10px; }
+  .account-plan-tag { font-size:7px; }
+}
