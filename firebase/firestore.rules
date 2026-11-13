@@ -1,11 +1,7 @@
 rules_version = '2';
 
-// SpoolFilm Firestore 安全規則。
-// 重點：使用者只能讀寫「自己的」資料，且不能自己改方案（plan / proUntil）；
-// 只有 admins 集合裡有名單的帳號（由你在 Firebase 主控台手動建立）才是管理員。
 service cloud.firestore {
   match /databases/{database}/documents {
-
     function signedIn() {
       return request.auth != null
         && request.auth.token.email != null
@@ -16,7 +12,12 @@ service cloud.firestore {
       return signedIn() && exists(/databases/$(database)/documents/admins/$(mail()));
     }
     function isSelf(email) { return signedIn() && mail() == email; }
-    // 計數欄位一次最多 +1，且不能減少
+    function accountActive() {
+      return signedIn()
+        && (!exists(/databases/$(database)/documents/users/$(mail()))
+          || !('accountStatus' in get(/databases/$(database)/documents/users/$(mail())).data)
+          || get(/databases/$(database)/documents/users/$(mail())).data.accountStatus == 'active');
+    }
     function bump(field) {
       return request.resource.data.get(field, 0) - resource.data.get(field, 0) >= 0
         && request.resource.data.get(field, 0) - resource.data.get(field, 0) <= 1;
@@ -24,15 +25,13 @@ service cloud.firestore {
 
     match /admins/{email} {
       allow get: if isSelf(email);
-      allow list, write: if false;           // 只能在 Firebase 主控台建立
+      allow list, write: if false;
     }
 
     match /users/{email} {
       allow get: if isSelf(email) || isAdmin();
       allow list: if isAdmin();
-
-      // 自己第一次建立：一律 FREE、計數為 0
-      allow create: if (isSelf(email)
+      allow create: if (isSelf(email) && accountActive()
           && request.resource.data.email == email
           && request.resource.data.plan == 'FREE'
           && request.resource.data.proUntil == ''
@@ -41,38 +40,51 @@ service cloud.firestore {
           && request.resource.data.downloads == 0
           && request.resource.data.syncs == 0)
         || isAdmin();
-
-      // 自己只能更新名稱、最後使用時間與計數
-      allow update: if (isSelf(email)
+      allow update: if (isSelf(email) && accountActive()
           && request.resource.data.diff(resource.data).affectedKeys()
                .hasOnly(['name', 'lastSeen', 'logins', 'photos', 'downloads', 'syncs'])
           && bump('logins') && bump('photos') && bump('downloads') && bump('syncs')
           && request.resource.data.name is string && request.resource.data.name.size() <= 100)
         || isAdmin();
-
-      allow delete: if isSelf(email) || isAdmin();
+      allow delete: if (isSelf(email) && accountActive()) || isAdmin();
     }
 
     match /events/{id} {
-      allow create: if signedIn()
+      allow create: if accountActive()
         && request.resource.data.keys().hasOnly(['time', 'email', 'event', 'details'])
         && request.resource.data.email == mail()
         && request.resource.data.event in ['login', 'photo', 'download', 'cloud_sync', 'denied']
         && request.resource.data.details is string && request.resource.data.details.size() <= 300;
-      allow get, list: if isAdmin() || (signedIn() && resource.data.email == mail());
-      allow delete: if isAdmin() || (signedIn() && resource.data.email == mail());
+      allow get, list: if isAdmin() || (accountActive() && resource.data.email == mail());
+      allow delete: if isAdmin() || (accountActive() && resource.data.email == mail());
       allow update: if false;
     }
 
     match /feedback/{id} {
-      allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['time', 'email', 'category', 'message', 'page'])
+      allow create: if accountActive()
+        && request.resource.data.keys().hasOnly(['time', 'email', 'category', 'message', 'page', 'status'])
         && request.resource.data.email == mail()
         && request.resource.data.message is string
         && request.resource.data.message.size() > 0 && request.resource.data.message.size() <= 1500;
-      allow get, list: if isAdmin() || (signedIn() && resource.data.email == mail());
-      allow delete: if isAdmin() || (signedIn() && resource.data.email == mail());
-      allow update: if false;
+      allow get, list: if isAdmin() || (accountActive() && resource.data.email == mail());
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status', 'adminReply', 'repliedAt', 'repliedBy']);
+      allow delete: if isAdmin() || (accountActive() && resource.data.email == mail());
+    }
+
+    match /notifications/{id} {
+      allow create: if isAdmin();
+      allow get, list: if isAdmin() || (accountActive() && resource.data.email == mail());
+      allow update: if accountActive() && resource.data.email == mail()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'readAt']);
+      allow delete: if isAdmin();
+    }
+
+    // Firebase Extension: Trigger Email 會監看此集合並寄出通知。
+    match /mail/{id} {
+      allow create: if isAdmin();
+      allow read, update, delete: if false;
     }
 
     match /{document=**} {

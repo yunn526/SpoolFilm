@@ -716,6 +716,33 @@
     } finally { btn.disabled = false; }
   }
 
+  async function loadNotifications() {
+    var wrap = $('notificationList');
+    if (!wrap || !SpoolAuth.user) return;
+    wrap.textContent = '載入中…';
+    var result = await SpoolAuth.api('notifications');
+    wrap.textContent = '';
+    if (!result.ok) { wrap.textContent = '目前無法載入通知，請稍後再試。'; return; }
+    if (!result.notifications.length) { wrap.textContent = '目前沒有新通知。'; return; }
+    result.notifications.forEach(function(n) {
+      var item = document.createElement('article'); item.className = 'notification-item' + (n.read ? '' : ' unread');
+      var title = document.createElement('strong'); title.textContent = n.title;
+      var date = document.createElement('small'); date.textContent = n.time ? new Date(n.time).toLocaleString('zh-TW') : '';
+      var msg = document.createElement('p'); msg.textContent = n.message;
+      item.append(title, date, msg);
+      if (!n.read) {
+        var btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn ghost small'; btn.textContent = '標記為已讀';
+        btn.addEventListener('click', async function() {
+          btn.disabled = true;
+          var r = await SpoolAuth.api('markNotificationRead', { id: n.id });
+          if (r.ok) { item.classList.remove('unread'); btn.remove(); } else { btn.disabled = false; toast('更新失敗，請稍後再試'); }
+        });
+        item.appendChild(btn);
+      }
+      wrap.appendChild(item);
+    });
+  }
+
   async function refreshPlan() {
     var d = await SpoolAuth.api('me');
     if (d.ok) { SpoolAuth.user.plan = d.plan; renderUser(); }
@@ -741,6 +768,7 @@
     if (user) {
       renderUser();
       loadSavedPhotos(user.email.toLowerCase());
+      loadNotifications();
     } else {
       loadingOwner = '';
       stopCamera(); photos.forEach(function (p) { if (p.url) URL.revokeObjectURL(p.url); });

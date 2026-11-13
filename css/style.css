@@ -405,3 +405,12 @@ input, select, .input { background:var(--paper); color:var(--ink); border-color:
 .auth-loading { text-align: center; margin-top: 22px; }
 .danger-card { margin-top: 14px; }
 .danger-btn { color: var(--danger); }
+
+/* SpoolFilm in-app notifications */
+.notification-list{display:grid;gap:9px;margin-top:10px}
+.notification-item{border:1px solid var(--line);background:var(--soft);border-radius:13px;padding:12px}
+.notification-item.unread{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
+.notification-item strong{display:block;font-size:13px;margin-bottom:4px}
+.notification-item p{font-size:13px;white-space:pre-wrap;line-height:1.6;margin:5px 0}
+.notification-item small{color:var(--muted);font-size:11px}
+.notification-item button{margin-top:7px;font-size:11px;padding:6px 10px}

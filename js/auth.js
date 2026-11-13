@@ -66,12 +66,16 @@
     var name = String(u.displayName || email.split('@')[0]).slice(0, 100);
     if (!snap.exists()) {
       await fs.setDoc(ref, { email: email, name: name, plan: 'FREE', proUntil: '', firstSeen: now, lastSeen: now,
-        logins: 0, photos: 0, downloads: 0, syncs: 0 });
+        logins: 0, photos: 0, downloads: 0, syncs: 0, accountStatus: 'active' });
+    }
+    var d = (await fs.getDoc(ref)).data() || {};
+    if (d.accountStatus && d.accountStatus !== 'active') {
+      var blockedError = new Error('account_suspended'); blockedError.code = 'account-suspended'; throw blockedError;
     }
     var patch = { lastSeen: now, name: name };
     if (isLogin) patch.logins = fs.increment(1);
     await fs.updateDoc(ref, patch);
-    var d = (await fs.getDoc(ref)).data() || {};
+    d = (await fs.getDoc(ref)).data() || {};
     var isAdmin = false;
     try { isAdmin = (await fs.getDoc(fs.doc(db, 'admins', email))).exists(); } catch (e) { isAdmin = false; }
     return { email: email, name: d.name || name, plan: effectivePlan(d.plan, d.proUntil), isAdmin: isAdmin, uid: u.uid };
@@ -120,8 +124,56 @@
         var last = 0;
         try { last = Number(localStorage.getItem('sf_fb_last') || 0); } catch (e) {}
         if (Date.now() - last < 60000) return { ok: false, error: 'rate_limited' };
-        await fs.addDoc(fs.collection(db, 'feedback'), { time: nowIso(), email: email, category: category, message: message, page: String(payload.page || '').slice(0, 40) });
+        await fs.addDoc(fs.collection(db, 'feedback'), { time: nowIso(), email: email, category: category, message: message, page: String(payload.page || '').slice(0, 40), status: 'pending' });
         try { localStorage.setItem('sf_fb_last', String(Date.now())); } catch (e) {}
+        return { ok: true };
+      }
+      if (action === 'notifications') {
+        var nq = await fs.getDocs(fs.query(fs.collection(db, 'notifications'), fs.where('email', '==', email), fs.limit(30)));
+        var notices = []; nq.forEach(function (s) { var n = s.data(); notices.push({ id: s.id, title: n.title || 'SpoolFilm 通知', message: n.message || '', time: n.time || '', read: !!n.read }); }); notices.sort(function(a,b){return String(b.time).localeCompare(String(a.time));});
+        return { ok: true, notifications: notices };
+      }
+      if (action === 'markNotificationRead') {
+        var nid = String(payload.id || '');
+        if (!/^[A-Za-z0-9_-]{1,150}$/.test(nid)) return { ok: false, error: 'bad_request' };
+        await fs.updateDoc(fs.doc(db, 'notifications', nid), { read: true, readAt: nowIso() });
+        return { ok: true };
+      }
+      if (action === 'adminSetAccountStatus') {
+        if (!state.user.isAdmin) return { ok: false, error: 'forbidden' };
+        var targetStatusEmail = String(payload.targetEmail || '').toLowerCase().trim();
+        var accountStatus = String(payload.status || '');
+        if (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(targetStatusEmail) || !['active','suspended','terminated'].includes(accountStatus)) return { ok: false, error: 'bad_request' };
+        var statusRef = userRef(targetStatusEmail), statusSnap = await fs.getDoc(statusRef);
+        if (!statusSnap.exists()) return { ok: false, error: 'not_found' };
+        await fs.updateDoc(statusRef, { accountStatus: accountStatus, statusUpdatedAt: nowIso(), statusUpdatedBy: email });
+        if (accountStatus !== 'active') {
+          await fs.addDoc(fs.collection(db, 'notifications'), { email: targetStatusEmail, title: accountStatus === 'terminated' ? '帳號使用權限已終止' : '帳號暫停通知', message: accountStatus === 'terminated' ? '管理員已終止此帳號使用 SpoolFilm 的權限。如有疑問，請透過聯絡信箱與我們聯繫。' : '管理員已暫停此帳號使用 SpoolFilm 的權限。如有疑問，請透過聯絡信箱與我們聯繫。', time: nowIso(), read: false });
+        }
+        return { ok: true };
+      }
+      if (action === 'adminSendNotice') {
+        if (!state.user.isAdmin) return { ok: false, error: 'forbidden' };
+        var noticeEmail = String(payload.targetEmail || '').toLowerCase().trim();
+        var noticeTitle = String(payload.title || '').trim(), noticeMessage = String(payload.message || '').trim();
+        if (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(noticeEmail) || !noticeTitle || noticeTitle.length > 80 || !noticeMessage || noticeMessage.length > 1200) return { ok: false, error: 'bad_request' };
+        var noticeUser = await fs.getDoc(userRef(noticeEmail));
+        if (!noticeUser.exists()) return { ok: false, error: 'not_found' };
+        await fs.addDoc(fs.collection(db, 'notifications'), { email: noticeEmail, title: noticeTitle, message: noticeMessage, time: nowIso(), read: false });
+        return { ok: true };
+      }
+      if (action === 'adminReplyFeedback') {
+        if (!state.user.isAdmin) return { ok: false, error: 'forbidden' };
+        var feedbackId = String(payload.id || ''), reply = String(payload.reply || '').trim();
+        var feedbackStatus = String(payload.status || 'in_progress');
+        if (!/^[A-Za-z0-9_-]{1,150}$/.test(feedbackId) || !reply || reply.length > 2000 || !['pending','in_progress','resolved'].includes(feedbackStatus)) return { ok: false, error: 'bad_request' };
+        var feedbackRef = fs.doc(db, 'feedback', feedbackId), feedbackSnap = await fs.getDoc(feedbackRef);
+        if (!feedbackSnap.exists()) return { ok: false, error: 'not_found' };
+        var fbData = feedbackSnap.data();
+        await fs.updateDoc(feedbackRef, { status: feedbackStatus, adminReply: reply, repliedAt: nowIso(), repliedBy: email });
+        await fs.addDoc(fs.collection(db, 'notifications'), { email: fbData.email, title: '問題回報有新回覆', message: reply, time: nowIso(), read: false, feedbackId: feedbackId });
+        // 若已安裝 Firebase Trigger Email 擴充功能，mail 集合會自動寄出 Email。
+        await fs.addDoc(fs.collection(db, 'mail'), { to: fbData.email, message: { subject: 'SpoolFilm 問題回報處理通知', text: '感謝你回報 SpoolFilm 的問題／建議。\\n\\n管理員回覆：\\n' + reply + '\\n\\n你也可以登入 SpoolFilm，在「我的」查看應用程式內通知。' }, createdAt: nowIso() });
         return { ok: true };
       }
       if (action === 'adminStats') {
@@ -133,14 +185,14 @@
           totals.users++; if (plan === 'PRO') totals.pro++;
           totals.logins += Number(r.logins || 0); totals.photos += Number(r.photos || 0);
           totals.downloads += Number(r.downloads || 0); totals.syncs += Number(r.syncs || 0);
-          users.push({ email: r.email || s.id, name: r.name || '', plan: plan, proUntil: r.proUntil || '', firstSeen: r.firstSeen || '',
+          users.push({ email: r.email || s.id, name: r.name || '', plan: plan, accountStatus: r.accountStatus || 'active', proUntil: r.proUntil || '', firstSeen: r.firstSeen || '',
             lastSeen: r.lastSeen || '', logins: Number(r.logins || 0), photos: Number(r.photos || 0),
             downloads: Number(r.downloads || 0), syncs: Number(r.syncs || 0) });
         });
         var ev = await fs.getDocs(fs.query(fs.collection(db, 'events'), fs.orderBy('time', 'desc'), fs.limit(100)));
         var recent = []; ev.forEach(function (s) { var r = s.data(); recent.push({ time: r.time, email: r.email, event: r.event, details: r.details }); });
         var fbq = await fs.getDocs(fs.query(fs.collection(db, 'feedback'), fs.orderBy('time', 'desc'), fs.limit(100)));
-        var feedback = []; fbq.forEach(function (s) { var r = s.data(); feedback.push({ time: r.time, email: r.email, category: r.category, message: r.message, page: r.page }); });
+        var feedback = []; fbq.forEach(function (s) { var r = s.data(); feedback.push({ id: s.id, time: r.time, email: r.email, category: r.category, message: r.message, page: r.page, status: r.status || 'pending', adminReply: r.adminReply || '' }); });
         return { ok: true, totals: totals, users: users, recent: recent, feedback: feedback };
       }
       if (action === 'adminSetPlan') {
@@ -335,7 +387,7 @@
     } catch (e) {
       console.error('login failed', e);
       state.user = null;
-      setMsg(String(e && e.code) === 'permission-denied' ? '登入失敗（permission-denied）：Firestore 安全規則尚未部署，請見 README。' : '登入失敗（' + (e && (e.code || e.message) || 'unknown') + '），請稍後再試。');
+      setMsg(String(e && e.code) === 'account-suspended' ? '此帳號目前無法使用 SpoolFilm。如需協助，請聯絡管理員。' : (String(e && e.code) === 'permission-denied' ? '登入失敗（permission-denied）：Firestore 安全規則尚未部署，請見 README。' : '登入失敗（' + (e && (e.code || e.message) || 'unknown') + '），請稍後再試。'));
       try { await fb.auth.signOut(auth); } catch (x) {}
     }
     setReadyUi(); notify();

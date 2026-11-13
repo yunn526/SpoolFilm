@@ -46,7 +46,7 @@ Firestore → 新增集合 `admins` → 文件 ID 填你的 **Email（小寫）*
 
 - FREE：9 款濾鏡、6 台相機、最長邊 1280px、含浮水印。
 - PRO：16 款濾鏡、12 台相機、原始解析度、無浮水印。目前由管理員在 `admin.html` 手動核發。
-- 沒有 Cloud Functions（避免需要付費方案），因此 PRO 的功能開關由前端判斷、方案欄位由規則保護：使用者改不了自己的方案，但技術上懂的人可以改前端程式來略過本機的 PRO 限制（例如使用 PRO 濾鏡），並不會取得 PRO 方案或影響他人。若之後要真正收費，請改用 Cloud Functions 做伺服器端檢查與金流。
+- 目前沒有自訂 Cloud Functions，因此 PRO 的功能開關由前端判斷、方案欄位由規則保護：使用者改不了自己的方案，但技術上懂的人可以改前端程式來略過本機的 PRO 限制（例如使用 PRO 濾鏡），並不會取得 PRO 方案或影響他人。若之後要真正收費，請改用 Cloud Functions 做伺服器端檢查與金流。
 
 ## 功能
 
@@ -59,3 +59,25 @@ Firestore → 新增集合 `admins` → 文件 ID 填你的 **Email（小寫）*
 ## 從舊版（Yunn Camera）升級
 
 舊的 Apps Script 後端（`backend/Code.gs`）已移除，不再使用。舊版的使用者與方案資料不會自動搬移；需要的話請在 `admin.html` 重新核發 PRO。
+
+
+## 管理後台新增功能（2026-11-13）
+
+- 管理員可在「使用者」頁將帳號設為正常、暫停或終止使用權限。暫停／終止會由 Firestore 規則阻擋資料存取，登入時也會提示帳號目前不可使用；這不會刪除使用者的 Google／Firebase Authentication 身分。
+- 管理員可在「問題回報」頁設定處理狀態並回覆。回覆會建立使用者的應用程式內通知。
+- 管理員可在「應用程式通知」頁向指定使用者發送公告。使用者登入後可在「我的」→「應用程式通知」查看並標記已讀。
+- 使用者收到的帳號狀態通知、回報回覆與一般公告均存在 Firestore `notifications` 集合。
+- 管理後台採側邊導覽／手機橫向導覽，各功能分頁切換；表格在自己的區域捲動，不需要整頁一直往下找。
+
+### 啟用回報 Email 通知（選用）
+
+注意：Firebase Trigger Email 擴充功能由 Firebase 管理的 Cloud Functions 執行，可能需要將 Firebase 專案升級至 Blaze 方案並依實際用量計費；若不啟用，App 內通知仍可使用。
+
+回報回覆已整合 Firebase「Trigger Email」擴充功能的 `mail` 集合格式。若希望管理員回覆時同步寄送 Email，需在 Firebase Console：
+
+1. 前往 Extensions，安裝 **Trigger Email**。
+2. 設定 SMTP 伺服器與寄件者 Email（可使用 Gmail SMTP；建議使用專用寄件帳號與 Google 應用程式密碼，不要把密碼放進前端程式）。
+3. 將監看的 Firestore collection 設為 `mail`。
+4. 安裝完成後，管理員每次儲存回報回覆，系統會建立 `mail` 文件，擴充功能會依設定寄送到使用者登入 Email。
+
+若未安裝／未正確設定 Trigger Email，應用程式內通知仍會正常建立，但不會寄出 Email。請先以測試帳號確認寄送與垃圾郵件匣，再正式使用。
